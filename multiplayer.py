@@ -6,10 +6,11 @@ GRID_SIZE = 10
 CELL_SIZE = 40
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+SHIP_SIZES = [1, 2, 3, 4]  # Example ship sizes
 
 # Initialize Pygame
 pygame.init()
-screen = pygame.display.set_mode(((GRID_SIZE + 1) * CELL_SIZE, (GRID_SIZE + 2) * CELL_SIZE))
+screen = pygame.display.set_mode(((GRID_SIZE + 1) * CELL_SIZE, (GRID_SIZE + 3) * CELL_SIZE))
 pygame.display.set_caption('Battleship')
 
 # Load images
@@ -55,50 +56,36 @@ def draw_grid(grid, reveal_ships=False):
                 text_surface = font.render(text, True, BLACK)
                 screen.blit(text_surface, ((x + 1) * CELL_SIZE + 10, (y + 1) * CELL_SIZE + 5))
 
-# Function to place ships on the grid (using input for simplicity, can be modified for mouse clicks)
-def place_ships(grid, num_ships):
-    for _ in range(num_ships):
+# Function to place ships on the grid
+def place_ships(grid, ship_sizes):
+    for ship_size in ship_sizes:
         while True:
             try:
-                x = int(input("Enter x-coordinate for the ship (1-10): ")) - 1
-                y = int(input("Enter y-coordinate for the ship (1-10): ")) - 1
+                x = int(input(f"Enter x-coordinate for a ship of size {ship_size} (1-10): ")) - 1
+                y = int(input(f"Enter y-coordinate for a ship of size {ship_size} (1-10): ")) - 1
                 direction = input("Enter direction (h for horizontal, v for vertical): ").lower()
-                ship_size = int(input("Enter size for the ship: "))
                 
                 if direction == 'h':
-                    side = input("Enter side (r for right, l for left): ").lower()
-                    if side == 'r':
-                        if x + ship_size <= GRID_SIZE and all(grid[y][x + i] == '.' for i in range(ship_size)):
-                            for i in range(ship_size):
-                                grid[y][x + i] = 'S'
-                            break
-                    elif side == 'l':
-                        if x - ship_size >= -1 and all(grid[y][x - i] == '.' for i in range(ship_size)):
-                            for i in range(ship_size):
-                                grid[y][x - i] = 'S'
-                            break
+                    if x + ship_size <= GRID_SIZE and all(grid[y][x + i] == '.' for i in range(ship_size)):
+                        for i in range(ship_size):
+                            grid[y][x + i] = 'S'
+                        break
                     else:
-                        print("Invalid side! Please enter 'r' for right or 'l' for left.")
+                        print("Invalid position or overlap! Try again.")
                 
                 elif direction == 'v':
-                    side = input("Enter side (u for up, d for down): ").lower()
-                    if side == 'd':
-                        if y + ship_size <= GRID_SIZE and all(grid[y + i][x] == '.' for i in range(ship_size)):
-                            for i in range(ship_size):
-                                grid[y + i][x] = 'S'
-                            break
-                    elif side == 'u':
-                        if y - ship_size >= -1 and all(grid[y - i][x] == '.' for i in range(ship_size)):
-                            for i in range(ship_size):
-                                grid[y - i][x] = 'S'
-                            break
+                    if y + ship_size <= GRID_SIZE and all(grid[y + i][x] == '.' for i in range(ship_size)):
+                        for i in range(ship_size):
+                            grid[y + i][x] = 'S'
+                        break
                     else:
-                        print("Invalid side! Please enter 'u' for up or 'd' for down.")
+                        print("Invalid position or overlap! Try again.")
+                
                 else:
                     print("Invalid direction! Please enter 'h' for horizontal or 'v' for vertical.")
+            
             except (ValueError, IndexError):
-                print("Invalid input! Please enter valid coordinates, direction, and ship size.")
-            print("Invalid coordinates or ships overlap! Try again.")
+                print("Invalid input! Please enter valid coordinates and direction.")
 
 # Function to fire at opponent's grid
 def fire(grid, x, y):
@@ -121,19 +108,20 @@ def display_turn(current_player):
     font = pygame.font.Font(None, 36)
     turn_text = f"Player {current_player}'s Turn"
     text_surface = font.render(turn_text, True, BLACK)
-    screen.blit(text_surface, (CELL_SIZE, 0))
+    text_rect = text_surface.get_rect(center=((GRID_SIZE + 1) * CELL_SIZE // 2, (GRID_SIZE + 1.5) * CELL_SIZE))
+    screen.blit(text_surface, text_rect)
 
 # Main function
 def main():
-    num_ships = int(input("Enter the number of ships each player should have: "))
+    num_ships = len(SHIP_SIZES)
 
     print("Player 1, place your ships:")
     player1_grid = initialize_grid()
-    place_ships(player1_grid, num_ships)
+    place_ships(player1_grid, SHIP_SIZES)
 
     print("Player 2, place your ships:")
     player2_grid = initialize_grid()
-    place_ships(player2_grid, num_ships)
+    place_ships(player2_grid, SHIP_SIZES)
 
     # Main game loop
     current_player = 1
@@ -151,31 +139,30 @@ def main():
                     if current_player == 1:
                         fire(player2_grid, grid_x, grid_y)
                         if check_win_condition(player2_grid):
-                            print("Player 1 wins!")
                             draw_grid(player1_grid, reveal_ships=True)
+                            display_turn(current_player)
                             pygame.display.flip()
                             pygame.time.wait(2000)
+                            print("Player 1 wins!")
                             pygame.quit()
                             sys.exit()
                         current_player = 2
                     else:           
                         fire(player1_grid, grid_x, grid_y)
                         if check_win_condition(player1_grid):
-                            print("Player 2 wins!")
                             draw_grid(player2_grid, reveal_ships=True)
+                            display_turn(current_player)
                             pygame.display.flip()
                             pygame.time.wait(2000)
+                            print("Player 2 wins!")
                             pygame.quit()
                             sys.exit()
                         current_player = 1
 
         screen.fill(WHITE)
-        if current_player != last_printed_turn:
-            print(f"Player {current_player}'s turn")
-            last_printed_turn = current_player  # Update the flag
-        display_turn(current_player)
         opponent_grid = player2_grid if current_player == 1 else player1_grid
         draw_grid(opponent_grid)
+        display_turn(current_player)
         pygame.display.flip()
 
 # Start the game
